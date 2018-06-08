@@ -1,0 +1,11 @@
+PSTOPIC
+    about_PSMicroFocusDeploy
+
+SHORT DESCRIPTION
+    PSMicroFocusDeploy allows you to work with Micro Focus Deployment Automation through PowerShell functions
+
+LONG DESCRIPTION
+    PSMicroFocusDeploy allows you to work with Micro Focus Deployment Automation through PowerShell functions
+
+DETAILED DESCRIPTION
+    This is rudimentary module and a work in progress
