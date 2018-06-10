@@ -39,21 +39,24 @@ function Get-MFDATasks {
 
     If ($Tasks) {
       $taskCollection = @()
+      $index = 1
+      $taskId = $Null
       $taskName = $Null
       $taskType = $Null
       $requestedDate = $Null
       $requestedBy = $Null
       $versions = $Null
       $environment = $Null
-      $i = 0 
+
       ForEach ($Task in $Tasks) {
+        $taskId = $Task.id
         $taskName = $Task.name
         $taskType = $Task.type
         Switch ($Task.type) {
           "approval" {
-            #componentProcessRequest
             $requestedBy = $task.applicationProcessRequest.userName
             $requestedDate = (Get-Date '1/1/1970').AddMilliseconds($task.applicationProcessRequest.submittedTime)
+            $environment = $task.applicationProcessRequest.environment.name
             if ($task.applicationProcessRequest.snapshot) {
               $versions = $task.applicationProcessRequest.snapshot.name
             } else {
@@ -80,43 +83,69 @@ function Get-MFDATasks {
             break;
           }
         }
-        Write-Host $requestDate $requestedBy
-        $taskCollection += New-Task -Index $i -Name $taskName -Type $taskType -RequestedDate $requestedDate -RequestedBy $requestedBy -Versions $versions -Environment $environment 
-        $i++
+        $taskCollection += New-Task -Index $index -Id $taskId -Name $taskName -Type $taskType -RequestedDate $requestedDate -RequestedBy $requestedBy -Versions $versions -Environment $environment 
+        $index++
       }
 
-      $taskCollection
-
-      #Write-Host `n
+      $taskCollection | Format-Table -Property @{n='[#]';e={$_.Index}},Name,Type,
+        @{n='Requested';e={$_.RequestedDate}},@{n='By';e={$_.RequestedBy}},
+        @{n='Snapshot/Version';e={$_.Versions}},Environment -AutoSize -Wrap
 
       Try {
-        [int]$taskSelection = Read-Host 'Which Task [#]? (any invalid option quits)' -ErrorAction SilentlyContinue
+        [int]$taskSelection = Read-Host 'Select Task [#]? (any invalid option quits)' -ErrorAction SilentlyContinue
       }
       Catch {
-        Write-Host "Invalid option, quitting!" -ForegroundColor Red -BackgroundColor DarkBlue
+        Write-Host "Invalid option, quitting!" -ForegroundColor Red -BackgroundColor White
         Break
       }
-      $taskAction = Read-Host "Approve or Reject [Approve]"
-      if ($taskAction -eq '' -or $taskAction -eq $Null) { $taskAction = "Approve"}
-      $taskComment = Read-Host 'Comment'
-    
-      Switch ($taskSelection) { 
-        {$_ -le ($i - 1)} { 
-          $ApprovalUrl = $global:MFDAUrl + "/rest/approval/task/$($Tasks[$_].id)/close"
-          $ApprovalAction = "passed"
+      # check $taskSelection <= collection size
+      if ($taskSelection > $taskCollection.size) {
+        Write-Host "Invalid option, quitting!" -ForegroundColor Red -BackgroundColor White
+        Break
+      }
+
+      $thisTask = $taskCollection | Select-Object -Index $($taskSelection-1)
+      $taskUuid = $thisTask.id
+
+      $thisTask | Format-List
+      
+      # Get the action to perform Accept/Reject or Cancel
+      $ApprovalAction = "passed"
+      $validAction = $False
+      $cancelInput = $False
+      while ($validAction -eq $False) {
+        $inputAction = Read-Host "Approve, Reject or Cancel [Approve]"
+        if ($inputAction -eq '' -or $inputAction -eq $Null -or $inputAction.ToLower() -eq "approve") { 
+          $validAction = $True
+        }
+        if ($inputAction.ToLower() -eq "reject") {
+          $ApprovalAction = "failed"
+          $validAction = $True
+        }
+        if ($inputAction.ToLower() -eq "cancel") {
+          $validAction = $True
+          $cancelInput = $True
+        }
+      }
+
+      # Get the comment to apply  
+      if ($cancelInput -eq $True) {
+        # ignore
+      } else {
+        $taskComment = Read-Host "Comment [none]"
+        Try {
+          $ApprovalUrl = $global:MFDAUrl + "/rest/approval/task/$($thisTask.id)/close"
           Write-Debug $ApprovalUrl
-          if ($taskAction.Substring(0,1).ToLower() -eq "r") { $ApprovalAction = "failed" }
           $Body = @{
             comment=$taskComment
             passFail=$ApprovalAction
           }
           $BodyJson = $Body | ConvertTo-Json
-          $Tasks = Invoke-RestMethod -Method Put -Uri $ApprovalUrl -Headers $Headers -Body $BodyJson -ContentType 'application/json'
+          #$Tasks = Invoke-RestMethod -Method Put -Uri $ApprovalUrl -Headers $Headers -Body $BodyJson -ContentType 'application/json'
           Write-Host "Done."
         }
-        Default {
-          Write-Host "Invalid option, quitting!" -ForegroundColor Red -BackgroundColor DarkBlue
-          Break
+        Catch {
+
         }
       }  
     } else {
@@ -124,14 +153,11 @@ function Get-MFDATasks {
     }  
 
   }
-  #  ForEach-Object {[PSCustomObject]@{Id=$_.id; Name=$_.name; Type=$_.type; 
-  #    AppName=$_.applicationProcessRequest.application.name; 
-  #    AppProcessName=$_.applicationProcessRequest.applicationProcess.name;
-  #    EnvironmentName=$_.applicationProcessRequest.environment.name}} | Format-Table
  
 }
 
-Function New-Task ($Index ='0',$Name='Name',$Type='approval',$RequestedDate='',$RequestedBy='',$Versions='',$Environment='')
+# Create a new DA Task object
+Function New-Task ($Index='1',$Id ='',$Name='Name',$Type='approval',$RequestedDate='',$RequestedBy='',$Versions='',$Environment='')
 {
-   New-Object -TypeName psObject -Property @{Index=$index; Name=$name; Type=$type; RequestedDate=$requested; RequestBy=$requestedBy; Versions=$versions; Environment=$environment}
+   New-Object -TypeName psObject -Property @{Index=$index; Id=$id; Name=$name; Type=$type; RequestedDate=$requestedDate; RequestedBy=$requestedBy; Versions=$versions; Environment=$environment}
 }
