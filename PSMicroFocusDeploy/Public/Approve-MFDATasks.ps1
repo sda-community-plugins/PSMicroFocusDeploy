@@ -125,6 +125,16 @@ function Approve-MFDATasks {
                 $commentRequired = $task.commentRequired
                 break;
               }
+			  "deploymentRunTask" {
+                $requestedBy = $task.deploymentRunProcessRequest.userName
+                $requestedDate = (Get-Date '1/1/1970').AddMilliseconds($task.deploymentRunProcessRequest.submittedTime)
+				ForEach ($env in $task.deploymentRunProcessRequest.runTimeEnvironments) {
+                  $environment = $environments + $env.name + ", "
+                } 
+                $description = $task.deploymentRunProcessRequest.description
+                $commentRequired = $task.commentRequired
+                break;
+              }
               default {
                 Write-Error "Unknown type $task.type!"
                 break;
@@ -227,7 +237,7 @@ function Approve-MFDATasks {
 }
 
 # Create a new DA Task object
-Function New-Task ($Index='1',$Id ='',$Name='Name',$Type='approval',$Description='',$CommentRequired=$False,$RequestedDate='',$RequestedBy='',$Versions='',$Environment='')
+Function New-DATask ($Index='1',$Id ='',$Name='Name',$Type='approval',$Description='',$CommentRequired=$False,$RequestedDate='',$RequestedBy='',$Versions='',$Environment='')
 {
    New-Object -TypeName psObject -Property @{Index=$index; Id=$id; Name=$name; Type=$type; Description=$description; CommentRequired=$commentRequired; RequestedDate=$requestedDate; RequestedBy=$requestedBy; Versions=$versions; Environment=$environment}
 }

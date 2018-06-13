@@ -8,6 +8,7 @@ Function Get-DATasksRest() {
         
         $headers = @{
             Authorization = Get-BasicAuthFromCreds $global:MFDACreds
+			DirectSsoInteraction = "true"
         }
         Write-Debug $headers
 
@@ -18,6 +19,6 @@ Function Get-DATasksRest() {
         return $restTasks
     }    
     Catch {
-        Write-Error "Error retrieving tassk via $approvalUrl"
+        Write-Error "Error retrieving tass via $approvalUrl"
     }    
 }

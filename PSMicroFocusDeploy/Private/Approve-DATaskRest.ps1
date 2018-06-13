@@ -5,6 +5,7 @@ Function Approve-DATaskRest($uuid, $comment="", $action="passed") {
 
         $headers = @{
             Authorization = Get-BasicAuthFromCreds $global:MFDACreds
+			DirectSsoInteraction = true
         }
         Write-Debug $headers
 
