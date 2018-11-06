@@ -1,4 +1,4 @@
-function Get-BasicAuthFromCreds {
+Function Get-BasicAuthFromCreds {
     param(
        $Creds
     )
